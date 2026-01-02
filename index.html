@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>CyberWatch Pro - Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rss-parser/3.12.0/rss-parser.min.js"></script>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #334155; min-height: 400px; }
+        h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 1.2rem; }
+        .item { margin-bottom: 12px; padding: 10px; background: #2d3748; border-radius: 6px; border-left: 4px solid var(--accent); }
+        a { color: #61dafb; text-decoration: none; font-weight: bold; font-size: 0.9rem; }
+        .error-msg { color: #f87171; font-size: 0.8rem; margin-top: 10px; }
+        .btn { background: #334155; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .btn:hover { background: var(--accent); }
+    </style>
+</head>
+<body>
+
+<h1 style="text-align:center">🛡️ Mon Dashboard Cybersécurité</h1>
+
+<div class="container">
+    <div class="card">
+        <h2>🇫🇷 CERT-FR (ANSSI)</h2>
+        <div id="anssi-feed">Chargement...</div>
+        <button class="btn" onclick="window.open('https://www.cert.ssi.gouv.fr/')">Ouvrir le site officiel</button>
+    </div>
+
+    <div class="card">
+        <h2>💻 Failles Microsoft</h2>
+        <div id="ms-feed">Chargement...</div>
+        <button class="btn" onclick="window.open('https://www.cert-ist.com/monespace/fluxrss?prodtID=1')">Lien direct Flux</button>
+    </div>
+
+    <div class="card">
+        <h2>🔍 Outils Rapides</h2>
+        <input type="text" id="cveSearch" placeholder="Ex: CVE-2024-..." style="width:70%; padding:8px;">
+        <button class="btn" onclick="searchCVE()">Chercher</button>
+        <hr style="margin:20px 0; border:0.5px solid #334155;">
+        <button class="btn" onclick="window.open('https://www.virustotal.com')">VirusTotal</button>
+        <button class="btn" onclick="window.open('https://www.cybermalveillance.gouv.fr/')">Cybermalveillance</button>
+    </div>
+</div>
+
+<script>
+    const parser = new RSSParser();
+    // Proxy alternatif plus stable
+    const PROXY = "https://api.allorigins.win/get?url=";
+
+    async function fetchRSS(url, containerId) {
+        const container = document.getElementById(containerId);
+        try {
+            const response = await fetch(PROXY + encodeURIComponent(url));
+            const json = await response.json();
+            const feed = await parser.parseString(json.contents);
+            
+            container.innerHTML = "";
+            feed.items.slice(0, 6).forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `<a href="${item.link}" target="_blank">${item.title}</a><br><small>${new Date(item.pubDate).toLocaleDateString()}</small>`;
+                container.appendChild(div);
+            });
+        } catch (err) {
+            container.innerHTML = "<p class='error-msg'>⚠️ Blocage Navigateur (CORS). <br> Pour voir les news, installez l'extension 'Allow CORS' ou utilisez les liens directs ci-dessous.</p>";
+        }
+    }
+
+    function searchCVE() {
+        const val = document.getElementById('cveSearch').value;
+        if(val) window.open(`https://cve.mitre.org/cgi-bin/cvename.cgi?name=${val}`);
+    }
+
+    fetchRSS("https://www.cert.ssi.gouv.fr/feed/", "anssi-feed");
+    fetchRSS("https://www.cert-ist.com/monespace/fluxrss", "ms-feed");
+</script>
+
+</body>
+</html>
