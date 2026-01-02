@@ -5,78 +5,78 @@
     <title>CyberWatch Pro - Dashboard</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; --success: #22c55e; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; line-height: 1.6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
         .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #334155; display: flex; flex-direction: column; min-height: 400px;}
-        h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 1.1rem; margin-top: 0; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #334155; min-height: 400px; }
+        h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 1.1rem; }
         .item { margin-bottom: 12px; padding: 10px; background: #2d3748; border-radius: 6px; border-left: 4px solid var(--accent); font-size: 0.85rem; }
         a { color: #61dafb; text-decoration: none; font-weight: bold; }
-        .checklist { list-style: none; padding: 0; }
-        .checklist li { margin-bottom: 10px; font-size: 0.9rem; display: flex; align-items: center; }
-        input[type="checkbox"] { margin-right: 10px; accent-color: var(--success); }
         .btn { background: #38bdf8; color: #0f172a; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<h1 style="text-align:center; margin-bottom: 30px;">🛡️ Mon Dashboard Cyber Sécurité</h1>
+<h1 style="text-align:center;">🛡️ Mon Dashboard Cyber Sécurité</h1>
 
 <div class="container">
     <div class="card">
-        <h2>🇫🇷 Alertes CERT-FR (ANSSI)</h2>
-        <div id="anssi-feed">Chargement des flux...</div>
+        <h2>🇫🇷 CERT-FR (ANSSI)</h2>
+        <div id="anssi-feed">Chargement...</div>
     </div>
-
     <div class="card">
-        <h2>💻 Failles Microsoft (CERT-IST)</h2>
-        <div id="ms-feed">Analyse en cours...</div>
+        <h2>💻 Failles Microsoft</h2>
+        <div id="ms-feed">Chargement...</div>
     </div>
-
     <div class="card">
-        <h2>✅ Checklist & Outils</h2>
-        <ul class="checklist">
-            <li><input type="checkbox"> Windows Update à jour ?</li>
-            <li><input type="checkbox"> Mails suspects vérifiés ?</li>
-            <li><input type="checkbox"> Sauvegarde effectuée ?</li>
-        </ul>
+        <h2>✅ Outils & Checklist</h2>
         <button class="btn" onclick="window.open('https://www.virustotal.com')">VirusTotal</button>
+        <button class="btn" onclick="location.reload()">Rafraîchir le Dashboard</button>
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/rss-parser/3.12.0/rss-parser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/rss-parser/3.12.0/rss-parser.min.js" id="rss-script"></script>
 
 <script>
-    // On attend que la bibliothèque soit bien chargée
-    window.onload = function() {
-        const parser = new RSSParser();
-        const PROXY = "https://api.allorigins.win/get?url=";
+    const PROXY = "https://api.allorigins.win/get?url=";
 
-        async function fetchRSS(url, containerId, filter = "") {
-            const container = document.getElementById(containerId);
-            try {
-                const response = await fetch(PROXY + encodeURIComponent(url));
-                const json = await response.json();
-                const feed = await parser.parseString(json.contents);
-                
-                container.innerHTML = "";
-                let count = 0;
-                feed.items.forEach(item => {
-                    if (count < 6 && (filter === "" || item.title.toLowerCase().includes(filter.toLowerCase()))) {
-                        const div = document.createElement('div');
-                        div.className = 'item';
-                        div.innerHTML = `<a href="${item.link}" target="_blank">${item.title}</a><br><small>📅 ${new Date(item.pubDate).toLocaleDateString()}</small>`;
-                        container.appendChild(div);
-                        count++;
-                    }
-                });
-            } catch (err) {
-                container.innerHTML = "Erreur de connexion. Réessayez dans quelques instants.";
-            }
+    async function fetchRSS(parser, url, containerId, filter = "") {
+        const container = document.getElementById(containerId);
+        try {
+            const response = await fetch(PROXY + encodeURIComponent(url));
+            const json = await response.json();
+            const feed = await parser.parseString(json.contents);
+            
+            container.innerHTML = "";
+            let count = 0;
+            feed.items.forEach(item => {
+                if (count < 6 && (filter === "" || item.title.toLowerCase().includes(filter.toLowerCase()))) {
+                    const div = document.createElement('div');
+                    div.className = 'item';
+                    div.innerHTML = `<a href="${item.link}" target="_blank">${item.title}</a><br><small>📅 ${new Date(item.pubDate).toLocaleDateString()}</small>`;
+                    container.appendChild(div);
+                    count++;
+                }
+            });
+        } catch (err) {
+            container.innerHTML = "Erreur de chargement des données.";
         }
+    }
 
-        fetchRSS("https://www.cert.ssi.gouv.fr/feed/", "anssi-feed");
-        fetchRSS("https://www.cert-ist.com/monespace/fluxrss", "ms-feed", "Microsoft");
-    };
+    // FONCTION DE VÉRIFICATION CRITIQUE
+    function initDashboard() {
+        if (typeof RSSParser !== 'undefined') {
+            console.log("RSSParser est prêt !");
+            const parser = new RSSParser();
+            fetchRSS(parser, "https://www.cert.ssi.gouv.fr/feed/", "anssi-feed");
+            fetchRSS(parser, "https://www.cert-ist.com/monespace/fluxrss", "ms-feed", "Microsoft");
+        } else {
+            console.log("Attente de la bibliothèque...");
+            setTimeout(initDashboard, 200); // Réessaie toutes les 200ms
+        }
+    }
+
+    // On lance la vérification dès que la page commence à charger
+    initDashboard();
 </script>
 
 </body>
