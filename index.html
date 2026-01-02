@@ -2,91 +2,113 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>CyberWatch Pro - Dashboard</title>
+    <title>CyberWatch - Triage Critique</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; --success: #22c55e; }
+        :root { --bg: #0b0f19; --card: #161b22; --text: #c9d1d9; --accent: #58a6ff; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #334155; min-height: 450px; }
-        h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 1.1rem; }
-        .item { margin-bottom: 12px; padding: 10px; background: #2d3748; border-radius: 6px; border-left: 4px solid var(--accent); font-size: 0.85rem; }
-        a { color: #61dafb; text-decoration: none; font-weight: bold; display: block; margin-bottom: 5px; }
-        .date { color: #94a3b8; font-size: 0.75rem; }
-        .btn { background: #38bdf8; color: #0f172a; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
+        .card { background: var(--card); border-radius: 8px; padding: 15px; border: 1px solid #30363d; }
+        h2 { font-size: 1.1rem; color: var(--accent); border-bottom: 1px solid #30363d; padding-bottom: 10px; margin-top: 0; }
+        
+        /* Styles de Criticité */
+        .item { padding: 10px; border-radius: 6px; margin-bottom: 10px; border-left: 5px solid #8b949e; background: #21262d; }
+        .critique { border-left-color: #f85149 !important; background: rgba(248, 81, 73, 0.1); } /* Rouge */
+        .important { border-left-color: #f0883e !important; background: rgba(240, 136, 62, 0.1); } /* Orange */
+        
+        .badge { font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 10px; text-transform: uppercase; margin-right: 5px; }
+        .badge-zero { background: #f85149; color: white; }
+        .badge-high { background: #f0883e; color: white; }
+        
+        a { color: #58a6ff; text-decoration: none; font-weight: bold; font-size: 0.85rem; display: block; }
+        .date { color: #8b949e; font-size: 0.75rem; }
     </style>
 </head>
 <body>
 
-<h1 style="text-align:center;">🛡️ Mon Dashboard Cyber Sécurité</h1>
+<h1 style="text-align:center;">📊 Veille Priorisée par Criticité</h1>
 
-<div class="container">
+<div class="grid">
     <div class="card">
-        <h2>🇫🇷 CERT-FR (ANSSI)</h2>
-        <div id="anssi-feed">Chargement des alertes...</div>
+        <h2>🔥 Alertes Critiques & Zero-Days</h2>
+        <div id="feed-critical">Recherche d'urgence...</div>
     </div>
     <div class="card">
-        <h2>💻 Failles Microsoft</h2>
-        <div id="ms-feed">Recherche des vulnérabilités...</div>
+        <h2>🔴 Fortinet / Cisco / Nutanix</h2>
+        <div id="feed-infra">Analyse infra...</div>
     </div>
     <div class="card">
-        <h2>✅ Outils & Liens</h2>
-        <p>En cas de problème de flux :</p>
-        <button class="btn" onclick="window.open('https://www.cert.ssi.gouv.fr/')">Site du CERT-FR</button>
-        <button class="btn" onclick="window.open('https://www.virustotal.com')">VirusTotal</button>
-        <button class="btn" onclick="location.reload()">Actualiser</button>
+        <h2>🔵 Microsoft & Applications</h2>
+        <div id="feed-app">Analyse apps...</div>
     </div>
 </div>
 
 <script>
-    // Utilisation d'un proxy différent pour éviter les erreurs de message channel
     const PROXY = "https://api.allorigins.win/get?url=";
+    const SOURCES = ["https://www.cert.ssi.gouv.fr/feed/", "https://www.cert-ist.com/monespace/fluxrss"];
 
-    async function loadCyberFeed(url, containerId, keyword = "") {
-        const container = document.getElementById(containerId);
-        try {
-            const response = await fetch(PROXY + encodeURIComponent(url));
-            const data = await response.json();
-            
-            // On utilise le parseur natif du navigateur (pas besoin de bibliothèque externe)
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(data.contents, "text/xml");
-            const items = xmlDoc.querySelectorAll("item");
-            
-            container.innerHTML = "";
-            let displayedCount = 0;
-
-            items.forEach(item => {
-                const title = item.querySelector("title").textContent;
-                const link = item.querySelector("link").textContent;
-                const pubDate = item.querySelector("pubDate") ? item.querySelector("pubDate").textContent : "";
-
-                // Filtrage par mot-clé si nécessaire
-                if (displayedCount < 6 && (keyword === "" || title.toLowerCase().includes(keyword.toLowerCase()))) {
-                    const div = document.createElement('div');
-                    div.className = 'item';
-                    div.innerHTML = `
-                        <a href="${link}" target="_blank">${title}</a>
-                        <span class="date">📅 ${pubDate.split(' ').slice(0, 4).join(' ')}</span>
-                    `;
-                    container.appendChild(div);
-                    displayedCount++;
-                }
-            });
-
-            if (displayedCount === 0) {
-                container.innerHTML = "Aucune alerte récente trouvée.";
-            }
-
-        } catch (error) {
-            console.error(error);
-            container.innerHTML = "<p style='color:#ef4444'>⚠️ Erreur de chargement. Vérifiez votre connexion ou désactivez votre bloqueur de pub.</p>";
-        }
+    function getSeverity(title) {
+        const t = title.toLowerCase();
+        if (t.includes('zero-day') || t.includes('0-day') || t.includes('critique') || t.includes('exécution de code à distance')) return 'critique';
+        if (t.includes('important') || t.includes('élévation de privilèges') || t.includes('déni de service')) return 'important';
+        return 'mineur';
     }
 
-    // Lancement direct
-    loadCyberFeed("https://www.cert.ssi.gouv.fr/feed/", "anssi-feed");
-    loadCyberFeed("https://www.cert-ist.com/monespace/fluxrss", "ms-feed", "Microsoft");
-</script>
+    async function loadDashboard() {
+        let allItems = [];
+        for (let url of SOURCES) {
+            try {
+                const res = await fetch(PROXY + encodeURIComponent(url));
+                const json = await res.json();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(json.contents, "text/xml");
+                xml.querySelectorAll("item").forEach(item => {
+                    const title = item.querySelector("title").textContent;
+                    allItems.push({
+                        title: title,
+                        link: item.querySelector("link").textContent,
+                        date: item.querySelector("pubDate").textContent,
+                        severity: getSeverity(title)
+                    });
+                });
+            } catch (e) { console.error("Erreur flux"); }
+        }
 
+        // Tri : Les critiques en premier
+        allItems.sort((a, b) => (a.severity === 'critique' ? -1 : 1));
+
+        const containers = {
+            critical: document.getElementById('feed-critical'),
+            infra: document.getElementById('feed-infra'),
+            app: document.getElementById('feed-app')
+        };
+
+        Object.values(containers).forEach(c => c.innerHTML = "");
+
+        allItems.slice(0, 15).forEach(item => {
+            const html = `
+                <div class="item ${item.severity}">
+                    ${item.severity === 'critique' ? '<span class="badge badge-zero">URGENT</span>' : ''}
+                    <a href="${item.link}" target="_blank">${item.title}</a>
+                    <span class="date">📅 ${new Date(item.date).toLocaleDateString()}</span>
+                </div>
+            `;
+
+            if (item.severity === 'critique') {
+                containers.critical.innerHTML += html;
+            } else if (/(fortinet|cisco|nutanix|fortigate)/i.test(item.title)) {
+                containers.infra.innerHTML += html;
+            } else {
+                containers.app.innerHTML += html;
+            }
+        });
+
+        // Nettoyage si vide
+        Object.keys(containers).forEach(k => {
+            if(containers[k].innerHTML === "") containers[k].innerHTML = "<p>Rien à signaler.</p>";
+        });
+    }
+
+    loadDashboard();
+</script>
 </body>
 </html>
