@@ -7,10 +7,11 @@
         :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; --success: #22c55e; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
         .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #334155; min-height: 400px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #334155; min-height: 450px; }
         h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 1.1rem; }
         .item { margin-bottom: 12px; padding: 10px; background: #2d3748; border-radius: 6px; border-left: 4px solid var(--accent); font-size: 0.85rem; }
-        a { color: #61dafb; text-decoration: none; font-weight: bold; }
+        a { color: #61dafb; text-decoration: none; font-weight: bold; display: block; margin-bottom: 5px; }
+        .date { color: #94a3b8; font-size: 0.75rem; }
         .btn { background: #38bdf8; color: #0f172a; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
@@ -21,62 +22,70 @@
 <div class="container">
     <div class="card">
         <h2>🇫🇷 CERT-FR (ANSSI)</h2>
-        <div id="anssi-feed">Chargement...</div>
+        <div id="anssi-feed">Chargement des alertes...</div>
     </div>
     <div class="card">
         <h2>💻 Failles Microsoft</h2>
-        <div id="ms-feed">Chargement...</div>
+        <div id="ms-feed">Recherche des vulnérabilités...</div>
     </div>
     <div class="card">
-        <h2>✅ Outils & Checklist</h2>
+        <h2>✅ Outils & Liens</h2>
+        <p>En cas de problème de flux :</p>
+        <button class="btn" onclick="window.open('https://www.cert.ssi.gouv.fr/')">Site du CERT-FR</button>
         <button class="btn" onclick="window.open('https://www.virustotal.com')">VirusTotal</button>
-        <button class="btn" onclick="location.reload()">Rafraîchir le Dashboard</button>
+        <button class="btn" onclick="location.reload()">Actualiser</button>
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/rss-parser/3.12.0/rss-parser.min.js" id="rss-script"></script>
-
 <script>
+    // Utilisation d'un proxy différent pour éviter les erreurs de message channel
     const PROXY = "https://api.allorigins.win/get?url=";
 
-    async function fetchRSS(parser, url, containerId, filter = "") {
+    async function loadCyberFeed(url, containerId, keyword = "") {
         const container = document.getElementById(containerId);
         try {
             const response = await fetch(PROXY + encodeURIComponent(url));
-            const json = await response.json();
-            const feed = await parser.parseString(json.contents);
+            const data = await response.json();
+            
+            // On utilise le parseur natif du navigateur (pas besoin de bibliothèque externe)
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+            const items = xmlDoc.querySelectorAll("item");
             
             container.innerHTML = "";
-            let count = 0;
-            feed.items.forEach(item => {
-                if (count < 6 && (filter === "" || item.title.toLowerCase().includes(filter.toLowerCase()))) {
+            let displayedCount = 0;
+
+            items.forEach(item => {
+                const title = item.querySelector("title").textContent;
+                const link = item.querySelector("link").textContent;
+                const pubDate = item.querySelector("pubDate") ? item.querySelector("pubDate").textContent : "";
+
+                // Filtrage par mot-clé si nécessaire
+                if (displayedCount < 6 && (keyword === "" || title.toLowerCase().includes(keyword.toLowerCase()))) {
                     const div = document.createElement('div');
                     div.className = 'item';
-                    div.innerHTML = `<a href="${item.link}" target="_blank">${item.title}</a><br><small>📅 ${new Date(item.pubDate).toLocaleDateString()}</small>`;
+                    div.innerHTML = `
+                        <a href="${link}" target="_blank">${title}</a>
+                        <span class="date">📅 ${pubDate.split(' ').slice(0, 4).join(' ')}</span>
+                    `;
                     container.appendChild(div);
-                    count++;
+                    displayedCount++;
                 }
             });
-        } catch (err) {
-            container.innerHTML = "Erreur de chargement des données.";
+
+            if (displayedCount === 0) {
+                container.innerHTML = "Aucune alerte récente trouvée.";
+            }
+
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = "<p style='color:#ef4444'>⚠️ Erreur de chargement. Vérifiez votre connexion ou désactivez votre bloqueur de pub.</p>";
         }
     }
 
-    // FONCTION DE VÉRIFICATION CRITIQUE
-    function initDashboard() {
-        if (typeof RSSParser !== 'undefined') {
-            console.log("RSSParser est prêt !");
-            const parser = new RSSParser();
-            fetchRSS(parser, "https://www.cert.ssi.gouv.fr/feed/", "anssi-feed");
-            fetchRSS(parser, "https://www.cert-ist.com/monespace/fluxrss", "ms-feed", "Microsoft");
-        } else {
-            console.log("Attente de la bibliothèque...");
-            setTimeout(initDashboard, 200); // Réessaie toutes les 200ms
-        }
-    }
-
-    // On lance la vérification dès que la page commence à charger
-    initDashboard();
+    // Lancement direct
+    loadCyberFeed("https://www.cert.ssi.gouv.fr/feed/", "anssi-feed");
+    loadCyberFeed("https://www.cert-ist.com/monespace/fluxrss", "ms-feed", "Microsoft");
 </script>
 
 </body>
