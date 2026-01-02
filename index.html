@@ -5,76 +5,82 @@
     <title>CyberWatch Pro - Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/rss-parser/3.12.0/rss-parser.min.js"></script>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; }
-        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #334155; min-height: 400px; }
-        h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 1.2rem; }
-        .item { margin-bottom: 12px; padding: 10px; background: #2d3748; border-radius: 6px; border-left: 4px solid var(--accent); }
-        a { color: #61dafb; text-decoration: none; font-weight: bold; font-size: 0.9rem; }
-        .error-msg { color: #f87171; font-size: 0.8rem; margin-top: 10px; }
-        .btn { background: #334155; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; margin: 5px; }
-        .btn:hover { background: var(--accent); }
+        :root { --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --accent: #38bdf8; --success: #22c55e; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 20px; line-height: 1.6; }
+        .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #334155; display: flex; flex-direction: column; }
+        h2 { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 10px; font-size: 1.1rem; margin-top: 0; }
+        .item { margin-bottom: 12px; padding: 10px; background: #2d3748; border-radius: 6px; border-left: 4px solid var(--accent); font-size: 0.85rem; }
+        a { color: #61dafb; text-decoration: none; font-weight: bold; }
+        .checklist { list-style: none; padding: 0; }
+        .checklist li { margin-bottom: 10px; font-size: 0.9rem; display: flex; align-items: center; }
+        input[type="checkbox"] { margin-right: 10px; accent-color: var(--success); }
+        .btn { background: #38bdf8; color: #0f172a; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .loader { color: #94a3b8; font-style: italic; }
     </style>
 </head>
 <body>
 
-<h1 style="text-align:center">🛡️ Mon Dashboard Cybersécurité</h1>
+<h1 style="text-align:center; margin-bottom: 30px;">🛡️ Mon Dashboard Cyber Sécurité</h1>
 
 <div class="container">
     <div class="card">
-        <h2>🇫🇷 CERT-FR (ANSSI)</h2>
-        <div id="anssi-feed">Chargement...</div>
-        <button class="btn" onclick="window.open('https://www.cert.ssi.gouv.fr/')">Ouvrir le site officiel</button>
+        <h2>🇫🇷 Alertes CERT-FR (ANSSI)</h2>
+        <div id="anssi-feed" class="loader">Connexion au flux ANSSI...</div>
     </div>
 
     <div class="card">
-        <h2>💻 Failles Microsoft</h2>
-        <div id="ms-feed">Chargement...</div>
-        <button class="btn" onclick="window.open('https://www.cert-ist.com/monespace/fluxrss?prodtID=1')">Lien direct Flux</button>
+        <h2>💻 Failles Microsoft (CERT-IST)</h2>
+        <div id="ms-feed" class="loader">Filtrage des failles en cours...</div>
     </div>
 
     <div class="card">
+        <h2>✅ Checklist Quotidienne</h2>
+        <ul class="checklist">
+            <li><input type="checkbox"> Vérifier Windows Update</li>
+            <li><input type="checkbox"> Scanner les mails douteux</li>
+            <li><input type="checkbox"> Vérifier les alertes ANSSI du jour</li>
+            <li><input type="checkbox"> Sauvegarde fichiers critiques</li>
+        </ul>
+        <hr style="border: 0.5px solid #334155; margin: 15px 0;">
         <h2>🔍 Outils Rapides</h2>
-        <input type="text" id="cveSearch" placeholder="Ex: CVE-2024-..." style="width:70%; padding:8px;">
-        <button class="btn" onclick="searchCVE()">Chercher</button>
-        <hr style="margin:20px 0; border:0.5px solid #334155;">
         <button class="btn" onclick="window.open('https://www.virustotal.com')">VirusTotal</button>
-        <button class="btn" onclick="window.open('https://www.cybermalveillance.gouv.fr/')">Cybermalveillance</button>
+        <button class="btn" onclick="window.open('https://www.cybermalveillance.gouv.fr/')">Besoin d'aide ?</button>
     </div>
 </div>
 
 <script>
     const parser = new RSSParser();
-    // Proxy alternatif plus stable
+    // On utilise un proxy plus performant pour GitHub Pages
     const PROXY = "https://api.allorigins.win/get?url=";
 
-    async function fetchRSS(url, containerId) {
+    async function fetchRSS(url, containerId, filter = "") {
         const container = document.getElementById(containerId);
         try {
             const response = await fetch(PROXY + encodeURIComponent(url));
+            if (!response.ok) throw new Error('Erreur réseau');
             const json = await response.json();
             const feed = await parser.parseString(json.contents);
             
             container.innerHTML = "";
-            feed.items.slice(0, 6).forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'item';
-                div.innerHTML = `<a href="${item.link}" target="_blank">${item.title}</a><br><small>${new Date(item.pubDate).toLocaleDateString()}</small>`;
-                container.appendChild(div);
+            let count = 0;
+            feed.items.forEach(item => {
+                if (count < 6 && (filter === "" || item.title.toLowerCase().includes(filter.toLowerCase()))) {
+                    const div = document.createElement('div');
+                    div.className = 'item';
+                    div.innerHTML = `<a href="${item.link}" target="_blank">${item.title}</a><br><small>📅 ${new Date(item.pubDate).toLocaleDateString()}</small>`;
+                    container.appendChild(div);
+                    count++;
+                }
             });
         } catch (err) {
-            container.innerHTML = "<p class='error-msg'>⚠️ Blocage Navigateur (CORS). <br> Pour voir les news, installez l'extension 'Allow CORS' ou utilisez les liens directs ci-dessous.</p>";
+            container.innerHTML = "<p style='color:#ef4444'>⚠️ Échec du chargement. Si vous voyez ceci sur GitHub, attendez 1 minute et rafraîchissez.</p>";
         }
     }
 
-    function searchCVE() {
-        const val = document.getElementById('cveSearch').value;
-        if(val) window.open(`https://cve.mitre.org/cgi-bin/cvename.cgi?name=${val}`);
-    }
-
+    // Lancement des flux
     fetchRSS("https://www.cert.ssi.gouv.fr/feed/", "anssi-feed");
-    fetchRSS("https://www.cert-ist.com/monespace/fluxrss", "ms-feed");
+    fetchRSS("https://www.cert-ist.com/monespace/fluxrss", "ms-feed", "Microsoft");
 </script>
 
 </body>
